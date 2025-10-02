@@ -1,0 +1,133 @@
+version: '3.8'
+
+services:
+  # Frontend (Next.js)
+  web:
+    build:
+      context: ../frontend
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=development
+    volumes:
+      - ../frontend:/app
+      - /app/node_modules
+    depends_on:
+      - api
+    networks:
+      - song-masher
+
+  # Backend API (FastAPI)
+  api:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql+psycopg://postgres:postgres@postgres:5432/postgres
+      - REDIS_URL=redis://redis:6379/0
+      - STORAGE_KIND=minio
+      - MINIO_ENDPOINT=minio:9000
+      - MINIO_ACCESS_KEY=minioadmin
+      - MINIO_SECRET_KEY=minioadmin
+      - MINIO_BUCKET=song-masher
+    volumes:
+      - ../backend:/app
+      - models:/app/models
+    depends_on:
+      - postgres
+      - redis
+      - minio
+    networks:
+      - song-masher
+
+  # Worker (Celery/RQ)
+  worker:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    command: celery -A tasks worker -l info
+    environment:
+      - DATABASE_URL=postgresql+psycopg://postgres:postgres@postgres:5432/postgres
+      - REDIS_URL=redis://redis:6379/0
+      - STORAGE_KIND=minio
+      - MINIO_ENDPOINT=minio:9000
+      - MINIO_ACCESS_KEY=minioadmin
+      - MINIO_SECRET_KEY=minioadmin
+      - MINIO_BUCKET=song-masher
+    volumes:
+      - ../backend:/app
+      - models:/app/models
+    depends_on:
+      - postgres
+      - redis
+      - minio
+    networks:
+      - song-masher
+
+  # Database (PostgreSQL)
+  postgres:
+    image: postgres:15
+    environment:
+      - POSTGRES_DB=postgres
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    networks:
+      - song-masher
+
+  # Redis (Cache & Message Broker)
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - song-masher
+
+  # MinIO (Object Storage)
+  minio:
+    image: minio/minio:latest
+    command: server /data --console-address ":9001"
+    environment:
+      - MINIO_ROOT_USER=minioadmin
+      - MINIO_ROOT_PASSWORD=minioadmin
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio_data:/data
+    networks:
+      - song-masher
+
+  # MinIO Client (for bucket creation)
+  minio-client:
+    image: minio/mc:latest
+    depends_on:
+      - minio
+    entrypoint: >
+      /bin/sh -c "
+      sleep 5;
+      /usr/bin/mc alias set myminio http://minio:9000 minioadmin minioadmin;
+      /usr/bin/mc mb myminio/song-masher --ignore-existing;
+      /usr/bin/mc policy set public myminio/song-masher;
+      exit 0;
+      "
+    networks:
+      - song-masher
+
+volumes:
+  postgres_data:
+  redis_data:
+  minio_data:
+  models:
+
+networks:
+  song-masher:
+    driver: bridge
