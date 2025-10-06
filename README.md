@@ -168,7 +168,3 @@ python -m pytest tests/test_beats.py -v
 python -m pytest tests/test_plan.py -v
 python -m pytest tests/test_render_smoke.py -v
 ```
-
-## License
-
-MIT License - See LICENSE file for details.
