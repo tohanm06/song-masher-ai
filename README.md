@@ -96,14 +96,6 @@ SIMPLE_MODE=true python -m backend.gradio_app
 5. **Render**: GPU-accelerated processing (15-90s depending on hardware)
 6. **Download**: High-quality WAV/MP3 + project.json for re-rendering
 
-## Resume Bullets
-
-- Built a full-stack audio-ML app producing beat-locked, key-matched mashups with <40 ms median downbeat error and −14 LUFS mastering
-- Deployed GPU-accelerated stem separation (Demucs) and Rubber Band transforms; 3-min render ~15s on T4
-- Implemented phrase-constrained DTW alignment with chorus-to-chorus matching and professional mixing pipeline
-- Created production Docker Compose stack with FastAPI, Celery workers, PostgreSQL, Redis, and MinIO storage
-- Achieved deterministic re-rendering with project JSON serialization and comprehensive test coverage
-
 ## Installation
 
 ### System Dependencies
